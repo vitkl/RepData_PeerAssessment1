@@ -10,7 +10,7 @@ output:
 ## Loading and preprocessing the data
 
 Reading data - and quick look
-``` {r} 
+``` {r loading} 
 # setwd("./RepData_PeerAssessment1")
 activity.dat = read.csv("activity.csv", colClasses = c("numeric", "Date","integer"),stringsAsFactors = F)
 head(activity.dat)
@@ -18,8 +18,7 @@ str(activity.dat)
 ```
 "spreading" data frame - so that each row contains all observations for each day,
 intervals in columns
-```{r}
-activity.dat.1row.per.date = tidyr::spread(activity.dat, interval, steps)
+```{r transforming}
 activity.dat.1row.per.interval = tidyr::spread(activity.dat, date, steps)
 # cheking how data was spread - code below produces lond output - disabled
 # str(activity.dat.1row.per.date)
@@ -31,19 +30,19 @@ activity.dat.1row.per.interval = tidyr::spread(activity.dat, date, steps)
 
 Calculating total number of steps per day (NA omitted) - plotting histogram
 ```{r}
-total_steps.per.day = rowSums(activity.dat.1row.per.date[1:61,2:289], na.rm = T)
+total_steps.per.day = colSums(activity.dat.1row.per.interval[,2:62], na.rm = T)
 
 library(ggplot2)
-qplot(x=total_steps.per.day) + geom_histogram(bins = 15)+
+qplot(x=total_steps.per.day, geom = "histogram", bins = 15) +
       xlab("the total number of steps taken each day") +
       ggtitle("Histogram of the total number of steps taken each day") +
       theme(title = element_text(size = rel(1.2)))
 ```
 
 ```{r}
-mean_steps.per.day = mean(total_steps.per.day)
+mean_steps.per.day = format(round(mean(total_steps.per.day),0), scientific=F)
 ```
-mean number of steps per day is `r round(mean_steps.per.day, 0)`
+mean number of steps per day is `r mean_steps.per.day`
 
 ```{r}
 median_steps.per.day = format(median(total_steps.per.day),scientific=F)
@@ -83,9 +82,7 @@ Imputing missing values by setting each missing observation (steps) to be equal
 to the mean number of steps taken in that interval
 ```{r}
 activity.dat.1row.per.interval.imputed = activity.dat.1row.per.interval
-activity.dat.1row.per.interval.imputed[is.na(activity.dat.1row.per.interval)] == activity.dat.1row.per.interval$mean_steps
-activity.dat.imputed = tidyr::gather(activity.dat.1row.per.interval.imputed[,1:62],date, steps)
-str(activity.dat.imputed)
+activity.dat.1row.per.interval.imputed[is.na(activity.dat.1row.per.interval)] = mean_steps.per.interval
 ```
 Calculating total number of steps per day (NA imputed) - plotting histogram
 ```{r}
@@ -93,20 +90,28 @@ total_steps.per.day.imputed =
       colSums(activity.dat.1row.per.interval.imputed[,2:62], na.rm = F)
 
 library(ggplot2)
-qplot(x=total_steps.per.day.imputed) + geom_histogram(bins = 15)+
+qplot(x=total_steps.per.day.imputed, geom = "histogram", bins = 15) + 
       xlab("the total number of steps taken each day") +
       ggtitle("Histogram of the total number of steps taken each day \n (after missing values were imputed)") +
       theme(title = element_text(size = rel(1.2)))
 ```
 
 ```{r}
-mean_steps.per.day.imputed = mean(total_steps.per.day.imputed)
+mean_steps.per.day.imputed = format(round(mean(total_steps.per.day.imputed),0),scientific=F)
 ```
-mean number of steps per day is `r round(mean_steps.per.day.imputed, 0)`
+mean number of steps per day after imputing is `r mean_steps.per.day.imputed`.
+Imputing missing values moves mean towards the median, thus making it more 
+descriptive.
 
 ```{r}
 median_steps.per.day.imputed = format(median(total_steps.per.day.imputed),scientific=F)
 ```
-median number of steps per day is `r median_steps.per.day`
+Median number of steps per day after imputing is `r median_steps.per.day`. 
+Imputing missing values doesn't change median at all.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r weekdays_transforming_data}
+activity.dat.weekdays = cbind(activity.dat.1row.per.interval.imputed, activity.dat.1row.per.interval.imputed)
+weekdays(as.Date(colnames(activity.dat.1row.per.interval.imputed)[2:62]))
+```

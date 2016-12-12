@@ -36,7 +36,6 @@ str(activity.dat)
 intervals in columns
 
 ```r
-activity.dat.1row.per.date = tidyr::spread(activity.dat, interval, steps)
 activity.dat.1row.per.interval = tidyr::spread(activity.dat, date, steps)
 # cheking how data was spread - code below produces lond output - disabled
 # str(activity.dat.1row.per.date)
@@ -49,24 +48,20 @@ activity.dat.1row.per.interval = tidyr::spread(activity.dat, date, steps)
 Calculating total number of steps per day (NA omitted) - plotting histogram
 
 ```r
-total_steps.per.day = rowSums(activity.dat.1row.per.date[1:61,2:289], na.rm = T)
+total_steps.per.day = colSums(activity.dat.1row.per.interval[,2:62], na.rm = T)
 
 library(ggplot2)
-qplot(x=total_steps.per.day) + geom_histogram(bins = 15)+
+qplot(x=total_steps.per.day, geom = "histogram", bins = 15) +
       xlab("the total number of steps taken each day") +
       ggtitle("Histogram of the total number of steps taken each day") +
       theme(title = element_text(size = rel(1.2)))
 ```
 
-```
-## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
-```
-
-![](PA1_template_files/figure-html/unnamed-chunk-3-1.png)<!-- -->
+![](PA1_template_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
 
 
 ```r
-mean_steps.per.day = mean(total_steps.per.day)
+mean_steps.per.day = format(round(mean(total_steps.per.day),0), scientific=F)
 ```
 mean number of steps per day is 9354
 
@@ -97,7 +92,7 @@ qplot(x = activity.dat.1row.per.interval$interval, y = mean_steps.per.interval) 
       theme(title = element_text(size = rel(1)))
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
+![](PA1_template_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
 
 The interval contaning maximum number of steps (on average(mean) across all days) - 835
 
@@ -115,22 +110,7 @@ to the mean number of steps taken in that interval
 
 ```r
 activity.dat.1row.per.interval.imputed = activity.dat.1row.per.interval
-activity.dat.1row.per.interval.imputed[is.na(activity.dat.1row.per.interval)] == activity.dat.1row.per.interval$mean_steps
-```
-
-```
-## logical(0)
-```
-
-```r
-activity.dat.imputed = tidyr::gather(activity.dat.1row.per.interval.imputed[,1:62],date, steps)
-str(activity.dat.imputed)
-```
-
-```
-## 'data.frame':	17856 obs. of  2 variables:
-##  $ date : chr  "interval" "interval" "interval" "interval" ...
-##  $ steps: num  0 5 10 15 20 25 30 35 40 45 ...
+activity.dat.1row.per.interval.imputed[is.na(activity.dat.1row.per.interval)] = mean_steps.per.interval
 ```
 Calculating total number of steps per day (NA imputed) - plotting histogram
 
@@ -139,34 +119,49 @@ total_steps.per.day.imputed =
       colSums(activity.dat.1row.per.interval.imputed[,2:62], na.rm = F)
 
 library(ggplot2)
-qplot(x=total_steps.per.day.imputed) + geom_histogram(bins = 15)+
+qplot(x=total_steps.per.day.imputed, geom = "histogram", bins = 15) + 
       xlab("the total number of steps taken each day") +
       ggtitle("Histogram of the total number of steps taken each day \n (after missing values were imputed)") +
       theme(title = element_text(size = rel(1.2)))
 ```
 
-```
-## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
-```
-
-```
-## Warning: Removed 8 rows containing non-finite values (stat_bin).
-
-## Warning: Removed 8 rows containing non-finite values (stat_bin).
-```
-
-![](PA1_template_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
+![](PA1_template_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
 
 
 ```r
-mean_steps.per.day.imputed = mean(total_steps.per.day.imputed)
+mean_steps.per.day.imputed = format(round(mean(total_steps.per.day.imputed),0),scientific=F)
 ```
-mean number of steps per day is NA
+mean number of steps per day after imputing is 10766.
+Imputing missing values moves mean towards the median, thus making it more 
+descriptive.
 
 
 ```r
 median_steps.per.day.imputed = format(median(total_steps.per.day.imputed),scientific=F)
 ```
-median number of steps per day is 10395
+Median number of steps per day after imputing is 10395. 
+Imputing missing values doesn't change median at all.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+
+```r
+activity.dat.weekdays = cbind(activity.dat.1row.per.interval.imputed, activity.dat.1row.per.interval.imputed)
+weekdays(as.Date(colnames(activity.dat.1row.per.interval.imputed)[2:62]))
+```
+
+```
+##  [1] "Monday"    "Tuesday"   "Wednesday" "Thursday"  "Friday"   
+##  [6] "Saturday"  "Sunday"    "Monday"    "Tuesday"   "Wednesday"
+## [11] "Thursday"  "Friday"    "Saturday"  "Sunday"    "Monday"   
+## [16] "Tuesday"   "Wednesday" "Thursday"  "Friday"    "Saturday" 
+## [21] "Sunday"    "Monday"    "Tuesday"   "Wednesday" "Thursday" 
+## [26] "Friday"    "Saturday"  "Sunday"    "Monday"    "Tuesday"  
+## [31] "Wednesday" "Thursday"  "Friday"    "Saturday"  "Sunday"   
+## [36] "Monday"    "Tuesday"   "Wednesday" "Thursday"  "Friday"   
+## [41] "Saturday"  "Sunday"    "Monday"    "Tuesday"   "Wednesday"
+## [46] "Thursday"  "Friday"    "Saturday"  "Sunday"    "Monday"   
+## [51] "Tuesday"   "Wednesday" "Thursday"  "Friday"    "Saturday" 
+## [56] "Sunday"    "Monday"    "Tuesday"   "Wednesday" "Thursday" 
+## [61] "Friday"
+```
