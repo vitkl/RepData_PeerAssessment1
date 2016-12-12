@@ -1,10 +1,11 @@
 # Reproducible Research: Peer Assessment 1
 Vitalii Kleshchevnikov  
 
+Running this Rmd requires tidyr and ggplot packages
 
 ## Loading and preprocessing the data
 
-Reading data - and quick look
+Reading data - and quick look. 
 
 ```r
 # setwd("./RepData_PeerAssessment1")
@@ -36,19 +37,22 @@ str(activity.dat)
 intervals in columns
 
 ```r
+activity.dat.1row.per.date = tidyr::spread(activity.dat, interval, steps)
 activity.dat.1row.per.interval = tidyr::spread(activity.dat, date, steps)
 # cheking how data was spread - code below produces lond output - disabled
-# str(activity.dat.1row.per.date)
 # str(activity.dat.1row.per.interval)
+# str(activity.dat.1row.per.date)
 ```
 
 
 ## What is mean total number of steps taken per day?
 
-Calculating total number of steps per day (NA omitted) - plotting histogram
+Removing days which doesn't have any measurements and
+calculating total number of steps per day (NA omitted) - plotting histogram
 
 ```r
-total_steps.per.day = colSums(activity.dat.1row.per.interval[,2:62], na.rm = T)
+activity.dat.1row.per.date.na.rm = activity.dat.1row.per.date[complete.cases(activity.dat.1row.per.date),]
+total_steps.per.day = rowSums(activity.dat.1row.per.date.na.rm[,2:289])
 
 library(ggplot2)
 qplot(x=total_steps.per.day, geom = "histogram", bins = 15) +
@@ -57,44 +61,47 @@ qplot(x=total_steps.per.day, geom = "histogram", bins = 15) +
       theme(title = element_text(size = rel(1.2)))
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-1-1.png)<!-- -->
+![](PA1_template_files/figure-html/steps_per_day-1.png)<!-- -->
 
 
 ```r
 mean_steps.per.day = format(round(mean(total_steps.per.day),0), scientific=F)
+# round to the nearest integer value (steps cannot be fractional)
+# format to avoid 1.07*10^4 representation
 ```
-mean number of steps per day is 9354
+mean number of steps per day is 10766
 
 
 ```r
-median_steps.per.day = format(median(total_steps.per.day),scientific=F)
+median_steps.per.day = format(round(median(total_steps.per.day),0),scientific=F)
+# round to the nearest integer value (steps cannot be fractional)
+# format to avoid 1.07*10^4 representation
 ```
-median number of steps per day is 10395
+median number of steps per day is 10765
 
 
 ## What is the average daily activity pattern?
 Calculating the mean number of steps per time interval (over all days) and
-the interval contaning maximum number of steps
+the interval containing maximum number of steps
 
 ```r
-mean_steps.per.interval = rowMeans(activity.dat.1row.per.interval[,2:61], na.rm = T)
+mean_steps.per.interval = rowMeans(activity.dat.1row.per.interval[,2:62], na.rm = T)
 max_step_interval = 
       activity.dat.1row.per.interval$interval[mean_steps.per.interval == max(mean_steps.per.interval)]
 ```
 
 
 ```r
-qplot(x = activity.dat.1row.per.interval$interval, y = mean_steps.per.interval) + 
-      geom_path() +
+qplot(x = activity.dat.1row.per.interval$interval, y = mean_steps.per.interval, geom="path") + 
       xlab("time interval") +
       ylab("mean number of steps")+
-      ggtitle("the average (mean) number of steps taken in different intervals during the day") +
+      ggtitle("the average (mean) number of steps taken in different intervals during the day") + scale_x_continuous(breaks = seq(0,2400,100))+
       theme(title = element_text(size = rel(1)))
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-5-1.png)<!-- -->
+![](PA1_template_files/figure-html/plotting_steps_per_interval-1.png)<!-- -->
 
-The interval contaning maximum number of steps (on average(mean) across all days) - 835
+The interval containing maximum number of steps (on average(mean) across all days) - 835
 
 
 ## Imputing missing values
@@ -103,7 +110,7 @@ The interval contaning maximum number of steps (on average(mean) across all days
 ```r
 missing_rows = sum(!complete.cases(activity.dat))
 ```
-the number of rows missing observations is 2304
+the number of intervals missing observations (the number of steps) is 2304
 
 Imputing missing values by setting each missing observation (steps) to be equal 
 to the mean number of steps taken in that interval
@@ -125,43 +132,76 @@ qplot(x=total_steps.per.day.imputed, geom = "histogram", bins = 15) +
       theme(title = element_text(size = rel(1.2)))
 ```
 
-![](PA1_template_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
+![](PA1_template_files/figure-html/histogram_steps_day-1.png)<!-- -->
 
 
 ```r
 mean_steps.per.day.imputed = format(round(mean(total_steps.per.day.imputed),0),scientific=F)
+# round to the nearest integer value (steps cannot be fractional)
+# format to avoid 1.07*10^4 representation
 ```
-mean number of steps per day after imputing is 10766.
-Imputing missing values moves mean towards the median, thus making it more 
-descriptive.
+mean number of steps per day doesn't change after imputing and equals to 10766.
 
 
 ```r
-median_steps.per.day.imputed = format(median(total_steps.per.day.imputed),scientific=F)
+median_steps.per.day.imputed = format(round(median(total_steps.per.day.imputed),0),scientific=F)
+# round to the nearest integer value (steps cannot be fractional)
+# format to avoid 1.07*10^4 representation
 ```
-Median number of steps per day after imputing is 10395. 
-Imputing missing values doesn't change median at all.
+Median number of steps per day after imputing is 10765. 
+Imputing missing values doesn't substantially change median either.
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
+Code below transfors the data.frame with imputed values into the form of original 
+dataset, adds the fourth variable weekday/weekend, separates data.frame by 
+weekday/weekend, transforms data.frame by spreading, recalculates the mean 
+number of steps in each time interval over weekdays or weekends. 
+Plots the result: during the day on x-axis, average(mean) number of steps on the 
+y-axis)
+
 
 ```r
-activity.dat.weekdays = cbind(activity.dat.1row.per.interval.imputed, activity.dat.1row.per.interval.imputed)
-weekdays(as.Date(colnames(activity.dat.1row.per.interval.imputed)[2:62]))
+activity.dat.weekdays = tidyr::gather(data = activity.dat.1row.per.interval.imputed,
+                                      key = date, value = steps, -interval)
+activity.dat.weekdays[,4] = weekdays(as.Date(activity.dat.weekdays$date))
+colnames(activity.dat.weekdays)[4] = "weekday"
+# Changing specific days to weekday/weekend
+activity.dat.weekdays$weekday = gsub("Friday", "weekday", activity.dat.weekdays$weekday)
+activity.dat.weekdays$weekday = gsub("Monday", "weekday", activity.dat.weekdays$weekday)
+activity.dat.weekdays$weekday = gsub("Tuesday", "weekday", activity.dat.weekdays$weekday)
+activity.dat.weekdays$weekday = gsub("Wednesday", "weekday", activity.dat.weekdays$weekday)
+activity.dat.weekdays$weekday = gsub("Thursday", "weekday", activity.dat.weekdays$weekday)
+activity.dat.weekdays$weekday = gsub("Saturday", "weekend", activity.dat.weekdays$weekday)
+activity.dat.weekdays$weekday = gsub("Sunday", "weekend", activity.dat.weekdays$weekday)
+# Transforming data for plotting
+activity.dat.weekdays.day = dplyr::filter(activity.dat.weekdays, weekday == "weekday")
+activity.dat.weekdays.day.s = tidyr::spread(activity.dat.weekdays.day, date, steps)
+mean_steps.per.interval.weekday = data.frame(interval = activity.dat.weekdays.day.s$interval, 
+                  mean_steps = rowMeans(activity.dat.weekdays.day.s[,3:ncol(activity.dat.weekdays.day.s)]), 
+                  weekday = activity.dat.weekdays.day.s$weekday)
+
+activity.dat.weekdays.end = dplyr::filter(activity.dat.weekdays, weekday == "weekend")
+activity.dat.weekdays.end.s = tidyr::spread(activity.dat.weekdays.end, date, steps)
+mean_steps.per.interval.weekend = data.frame(interval = activity.dat.weekdays.end.s$interval, 
+                  mean_steps = rowMeans(activity.dat.weekdays.end.s[,3:ncol(activity.dat.weekdays.end.s)]), 
+                  weekday = activity.dat.weekdays.end.s$weekday)
+
+activity.weekdays = rbind(mean_steps.per.interval.weekday, mean_steps.per.interval.weekend)
+
+# plotting
+ggplot(activity.weekdays, aes(x=interval, y = mean_steps))+
+      geom_path() + facet_grid(weekday~.)+
+            xlab("time interval") +
+      ylab("mean number of steps")+
+      ggtitle("the average (mean) number of steps taken in different intervals \n during the day, weekdays as compared to weekends") +
+      scale_x_continuous(breaks = seq(0,2400,100))+
+      theme(title = element_text(size = rel(1)))
 ```
 
-```
-##  [1] "Monday"    "Tuesday"   "Wednesday" "Thursday"  "Friday"   
-##  [6] "Saturday"  "Sunday"    "Monday"    "Tuesday"   "Wednesday"
-## [11] "Thursday"  "Friday"    "Saturday"  "Sunday"    "Monday"   
-## [16] "Tuesday"   "Wednesday" "Thursday"  "Friday"    "Saturday" 
-## [21] "Sunday"    "Monday"    "Tuesday"   "Wednesday" "Thursday" 
-## [26] "Friday"    "Saturday"  "Sunday"    "Monday"    "Tuesday"  
-## [31] "Wednesday" "Thursday"  "Friday"    "Saturday"  "Sunday"   
-## [36] "Monday"    "Tuesday"   "Wednesday" "Thursday"  "Friday"   
-## [41] "Saturday"  "Sunday"    "Monday"    "Tuesday"   "Wednesday"
-## [46] "Thursday"  "Friday"    "Saturday"  "Sunday"    "Monday"   
-## [51] "Tuesday"   "Wednesday" "Thursday"  "Friday"    "Saturday" 
-## [56] "Sunday"    "Monday"    "Tuesday"   "Wednesday" "Thursday" 
-## [61] "Friday"
-```
+![](PA1_template_files/figure-html/weekdays_vs_weekends-1.png)<!-- -->
+
+From the graph you can infer the person tends to get up and go to bed earlier during weekdays. Another tendency is that person walks more during the day (10:00-20:00).
+Finally, you can see a strong spike in activity in the morning, around 8:35. The
+absence of such spike in the evening suggests it may not be generated by 
+rushing to workplace, rather by physical activity, let's say jogging.
